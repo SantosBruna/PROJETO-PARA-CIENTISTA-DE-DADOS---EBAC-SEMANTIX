@@ -494,3 +494,202 @@ def plot_variancia_acumulada(cumulative_variance):
     plt.ylabel('Variância Explicada Acumulada')
     plt.grid(True)
     plt.show()
+
+    # ══════════════════════════════════════════════════════════════════
+# FUNÇÕES NOVAS — adicione ao final do seu plot_utils.py
+# ══════════════════════════════════════════════════════════════════
+
+import plotly.express as px
+import plotly.graph_objects as go
+from sklearn.metrics import confusion_matrix
+import pandas as pd
+
+
+def plot_tabela_comparativa(df_metricas: pd.DataFrame):
+    """
+    Exibe uma tabela visual estilizada com as métricas de todos os modelos.
+    A linha do melhor modelo (maior F1-Score) é destacada em verde.
+
+    Parâmetros:
+    -----------
+    df_metricas : pd.DataFrame
+        Saída da função mu.comparar_modelos() — colunas:
+        Modelo, Accuracy, Precision, Recall, F1-Score
+    """
+    melhor_idx = df_metricas['F1-Score'].idxmax()
+
+    cores_linhas = [
+        ['#1a472a' if i == melhor_idx else '#2d2d44'
+         for i in range(len(df_metricas))]
+    ] * len(df_metricas.columns)
+
+    fig = go.Figure(
+        data=[go.Table(
+            columnwidth=[260, 100, 100, 100, 100],
+            header=dict(
+                values=[f'<b>{c}</b>' for c in df_metricas.columns],
+                fill_color='#1a1a2e',
+                font=dict(color='white', size=13),
+                align='center',
+                height=36
+            ),
+            cells=dict(
+                values=[df_metricas[c] for c in df_metricas.columns],
+                fill_color=cores_linhas,
+                font=dict(color='white', size=12),
+                align=['left', 'center', 'center', 'center', 'center'],
+                height=30
+            )
+        )]
+    )
+
+    fig.update_layout(
+        title=dict(
+            text='📊 Comparação de Modelos — Métricas de Classificação (%)',
+            font=dict(size=16)
+        ),
+        margin=dict(l=10, r=10, t=50, b=10),
+        height=60 + len(df_metricas) * 36
+    )
+
+    fig.show()
+
+
+def plot_comparacao_modelos(df_metricas: pd.DataFrame):
+    """
+    Gráfico de barras agrupadas comparando Accuracy, Precision,
+    Recall e F1-Score de todos os modelos.
+
+    Parâmetros:
+    -----------
+    df_metricas : pd.DataFrame
+        Saída da função mu.comparar_modelos()
+    """
+    df_melt = df_metricas.melt(
+        id_vars='Modelo',
+        value_vars=['Accuracy', 'Precision', 'Recall', 'F1-Score'],
+        var_name='Métrica',
+        value_name='Valor (%)'
+    )
+
+    fig = px.bar(
+        df_melt,
+        x='Modelo',
+        y='Valor (%)',
+        color='Métrica',
+        barmode='group',
+        title='📈 Comparação de Métricas por Modelo',
+        text=df_melt['Valor (%)'].astype(str) + '%',
+        color_discrete_sequence=px.colors.qualitative.Set2
+    )
+
+    fig.update_layout(
+        xaxis_title='',
+        yaxis_title='Valor (%)',
+        yaxis=dict(range=[0, 108]),
+        legend_title='Métrica',
+        xaxis_tickangle=-30,
+        height=500
+    )
+
+    fig.update_traces(textposition='outside', textfont_size=10)
+    fig.show()
+
+
+def plot_matriz_confusao(
+    y_true,
+    y_pred,
+    labels: list = None,
+    titulo: str = '🎯 Matriz de Confusão'
+):
+    """
+    Plota a matriz de confusão como heatmap interativo (Plotly).
+
+    Parâmetros:
+    -----------
+    y_true : array-like — valores reais do target
+    y_pred : array-like — valores preditos
+    labels : list       — nomes das classes (ex: ['Insatisfeito', 'Satisfeito'])
+                          Se None, usa [0, 1]
+    titulo : str        — título do gráfico
+    """
+    cm = confusion_matrix(y_true, y_pred)
+
+    if labels is None:
+        labels = [str(i) for i in range(cm.shape[0])]
+
+    fig = px.imshow(
+        cm,
+        text_auto=True,
+        color_continuous_scale='Blues',
+        labels=dict(x='Predito', y='Real', color='Qtd'),
+        x=labels,
+        y=labels,
+        title=titulo
+    )
+
+    fig.update_layout(
+        height=420,
+        coloraxis_showscale=False,
+        font=dict(size=13)
+    )
+
+    fig.show()
+
+    # Resumo textual
+    tn, fp, fn, tp = cm.ravel()
+    print(f"\n  ✅ Verdadeiros Positivos : {tp:,}")
+    print(f"  ✅ Verdadeiros Negativos : {tn:,}")
+    print(f"  ❌ Falsos Positivos      : {fp:,}")
+    print(f"  ❌ Falsos Negativos      : {fn:,}")
+
+
+def plot_feature_importance(
+    df_fi: pd.DataFrame,
+    top_n: int = 15,
+    coluna_nome: str = 'Feature_PT',
+    titulo: str = '🔍 Top Features que Mais Impactam a Satisfação'
+):
+    """
+    Gráfico horizontal de barras com as features mais importantes.
+
+    Parâmetros:
+    -----------
+    df_fi       : pd.DataFrame — saída de mu.calcular_feature_importance_pca()
+                  deve ter colunas 'Importância' e a coluna de nome (Feature ou Feature_PT)
+    top_n       : int  — quantas features exibir (padrão: 15)
+    coluna_nome : str  — coluna com os nomes das features a exibir
+                         use 'Feature_PT' se passou traducao, senão 'Feature'
+    titulo      : str  — título do gráfico
+    """
+    # se coluna_nome não existir, fallback para 'Feature'
+    if coluna_nome not in df_fi.columns:
+        coluna_nome = 'Feature'
+
+    df_plot = df_fi.head(top_n).sort_values('Importância', ascending=True)
+
+    fig = px.bar(
+        df_plot,
+        x='Importância',
+        y=coluna_nome,
+        orientation='h',
+        title=titulo,
+        color='Importância',
+        color_continuous_scale='Teal',
+        text=df_plot['Importância'].round(4)
+    )
+
+    fig.update_layout(
+        xaxis_title='Importância (loadings PCA × XGBoost)',
+        yaxis_title='',
+        coloraxis_showscale=False,
+        height=100 + top_n * 32,
+        font=dict(size=12)
+    )
+
+    fig.update_traces(textposition='outside')
+    fig.show()
+
+    print(f"\n🏆 Top 5 fatores mais determinantes:")
+    for _, row in df_plot.tail(5).iloc[::-1].iterrows():
+        print(f"  {row[coluna_nome]}: {row['Importância']:.4f}")
