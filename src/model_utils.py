@@ -13,6 +13,7 @@ from sklearn.ensemble import RandomForestClassifier
 from xgboost import XGBClassifier
 from sklearn.svm import SVC
 from sklearn.compose import ColumnTransformer
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
 
 def criar_pipeline_kmeans(n_clusters=5, random_state=42):
     pipeline = Pipeline([
@@ -341,3 +342,106 @@ def extrair_resultados_kmeans_pipeline(pipeline, X):
     centroides = scaler.inverse_transform(kmeans.cluster_centers_)
 
     return labels, centroides
+
+    from sklearn.metrics import (
+    accuracy_score, precision_score,
+    recall_score, f1_score
+)
+import pandas as pd
+import numpy as np
+ 
+ 
+def calcular_metricas(y_true, y_pred, nome_modelo: str) -> dict:
+    """
+    Calcula as principais métricas de classificação para um modelo.
+ 
+    Parâmetros:
+    -----------
+    y_true      : array-like — valores reais do target
+    y_pred      : array-like — valores preditos pelo modelo
+    nome_modelo : str        — nome/label do modelo para identificação
+ 
+    Retorna:
+    --------
+    dict com Modelo, Accuracy, Precision, Recall e F1-Score (em %)
+    """
+    return {
+        'Modelo':    nome_modelo,
+        'Accuracy':  round(accuracy_score(y_true, y_pred) * 100, 2),
+        'Precision': round(precision_score(y_true, y_pred, zero_division=0) * 100, 2),
+        'Recall':    round(recall_score(y_true, y_pred, zero_division=0) * 100, 2),
+        'F1-Score':  round(f1_score(y_true, y_pred, zero_division=0) * 100, 2),
+    }
+ 
+ 
+def comparar_modelos(lista_predicoes: list) -> pd.DataFrame:
+    """
+    Gera um DataFrame comparativo de métricas para múltiplos modelos.
+ 
+    Parâmetros:
+    -----------
+    lista_predicoes : list de dicts, cada dict com:
+        - 'nome'   : str         → label do modelo
+        - 'y_true' : array-like  → valores reais
+        - 'y_pred' : array-like  → valores preditos
+ 
+    Retorna:
+    --------
+    pd.DataFrame com colunas: Modelo, Accuracy, Precision, Recall, F1-Score
+ 
+    Exemplo de uso:
+    ---------------
+    df_metricas = mu.comparar_modelos([
+        {'nome': 'LR sem hiper',  'y_true': Y, 'y_pred': y_pred_lr_simple},
+        {'nome': 'XGBoost hiper', 'y_true': Y, 'y_pred': y_pred_xg_hiper},
+    ])
+    """
+    resultados = [
+        calcular_metricas(m['y_true'], m['y_pred'], m['nome'])
+        for m in lista_predicoes
+    ]
+    return pd.DataFrame(resultados)
+ 
+ 
+def calcular_feature_importance_pca(
+    pipeline,
+    feature_names: list,
+    traducao: dict = None
+) -> pd.DataFrame:
+    """
+    Estima a importância das features originais em um pipeline que contém
+    PCA + XGBoost, multiplicando os loadings do PCA pelas importâncias
+    do modelo.
+ 
+    Parâmetros:
+    -----------
+    pipeline      : pipeline treinado (deve ter steps 'pca' e 'modelo')
+    feature_names : list → nomes das features originais (X.columns)
+    traducao      : dict opcional → mapeamento {nome_ingles: nome_pt}
+ 
+    Retorna:
+    --------
+    pd.DataFrame com colunas: Feature, Feature_PT (se traducao), Importância
+    ordenado do maior para o menor.
+    """
+    pca_step   = pipeline.named_steps['pca']
+    model_step = pipeline.named_steps['modelo']
+ 
+    importancias = model_step.feature_importances_
+    n_comp       = pca_step.n_components_
+    loadings     = np.abs(pca_step.components_)         # (n_comp, n_features)
+ 
+    importancias_originais = importancias[:n_comp] @ loadings
+ 
+    df_fi = pd.DataFrame({
+        'Feature':     feature_names,
+        'Importância': importancias_originais
+    }).sort_values('Importância', ascending=False).reset_index(drop=True)
+ 
+    if traducao:
+        df_fi['Feature_PT'] = df_fi['Feature'].map(traducao).fillna(df_fi['Feature'])
+ 
+    return df_fi
+
+    
+ 
