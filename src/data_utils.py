@@ -136,10 +136,8 @@ def listar_colunas(df: pd.DataFrame):
     """
     return df.columns.tolist()
 
-def separar_x_y(df):
-    target = df.columns[-1]
-    
-    X = df.drop(target, axis=1)
+def separar_x_y(df, target):
+    X = df.drop(columns=[target])
     y = df[target]
     
     return X, y
