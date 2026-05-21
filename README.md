@@ -117,7 +117,7 @@ Análise exploratória com PCA sobre as 18 features selecionadas:
 
 ### Variância Explicada pelo PCA
 
-![PCA](images/pca_variancia.png)
+![PCA](imagens/variancia.png)
 
 Os modelos foram treinados com `n_components=18` (sem redução), aproveitando a variância total do conjunto de features selecionadas.
 
@@ -148,11 +148,11 @@ As predições finais foram geradas via `cross_val_predict`, garantindo que cada
 
 ### Comparação Visual dos Modelos
 
-![Comparação dos Modelos](images/comparacao_modelos.png)
+![Comparação dos Modelos](imagens/comparativo-modelos.png)
 
 ### Matriz de Confusão — Melhor Modelo
 
-![Matriz de Confusão](images/matriz_confusao.png)
+![Matriz de Confusão](imagens/matriz-confusao.png)
 
 ### Principais descobertas
 
@@ -177,7 +177,8 @@ Os cinco fatores mais determinantes identificados pelo modelo (Feature Importanc
 4. **Wi-Fi a bordo**                  - 0,1925
 5. **Reserva online**                - 0,1835
 
-![Feature Importance](images/feature_importance.png)
+### Importância das Variáveis no XGBoost
+![Feature Importance](imagens/features.png)
 
 O que esses números revelam é que a experiência do passageiro começa muito antes do voo e continua durante ele: o check-in — primeiro serviço presencial — define em grande parte a impressão geral da viagem. Em seguida, o entretenimento a bordo e o embarque online mostram que tanto o conforto durante o voo quanto a facilidade dos processos digitais pré-embarque têm peso equivalente na satisfação.
 Outro ponto relevante é que os três serviços digitais (embarque online, Wi-Fi e reserva online) somam importância comparável à do check-in sozinho, reforçando que a jornada digital do passageiro — do momento da compra até o embarque — é tão crítica quanto o atendimento presencial.
