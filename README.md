@@ -115,6 +115,10 @@ Análise exploratória com PCA sobre as 18 features selecionadas:
 | 13 componentes | ~95% |
 | 18 componentes | 100% |
 
+### Variância Explicada pelo PCA
+
+![PCA](images/pca_variancia.png)
+
 Os modelos foram treinados com `n_components=18` (sem redução), aproveitando a variância total do conjunto de features selecionadas.
 
 ### Modelos treinados
@@ -142,6 +146,14 @@ As predições finais foram geradas via `cross_val_predict`, garantindo que cada
 | XGBoost (sem hiper) | 93.93 | 94.16 | 91.67 | 92.9 |
 | **XGBoost (com hiper)** | **95.01** | **95.66** | **92.68** | **94.15** |
 
+### Comparação Visual dos Modelos
+
+![Comparação dos Modelos](images/comparacao_modelos.png)
+
+### Matriz de Confusão — Melhor Modelo
+
+![Matriz de Confusão](images/matriz_confusao.png)
+
 ### Principais descobertas
 
 > 💡 **Insight 1 — Serviços digitais lideram o impacto:** Embarque online e reserva online estão entre os fatores com maior peso na satisfação — a jornada digital do passageiro tem mais influência do que muitos serviços físicos tradicionais.
@@ -164,6 +176,8 @@ Os cinco fatores mais determinantes identificados pelo modelo (Feature Importanc
 3. 🥉 **Embarque online**            - 0,2009
 4. **Wi-Fi a bordo**                  - 0,1925
 5. **Reserva online**                - 0,1835
+
+![Feature Importance](images/feature_importance.png)
 
 O que esses números revelam é que a experiência do passageiro começa muito antes do voo e continua durante ele: o check-in — primeiro serviço presencial — define em grande parte a impressão geral da viagem. Em seguida, o entretenimento a bordo e o embarque online mostram que tanto o conforto durante o voo quanto a facilidade dos processos digitais pré-embarque têm peso equivalente na satisfação.
 Outro ponto relevante é que os três serviços digitais (embarque online, Wi-Fi e reserva online) somam importância comparável à do check-in sozinho, reforçando que a jornada digital do passageiro — do momento da compra até o embarque — é tão crítica quanto o atendimento presencial.
