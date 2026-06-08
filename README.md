@@ -64,7 +64,13 @@ Este projeto posiciona-se na interseção de:
 ```
 .
 ├── base/
-│   └── train.csv                         # Dataset (Kaggle)
+│   ├── test.csv
+│   └── train.csv
+├── imagens/
+│   ├── comparativo-modelos.png                     
+│   ├── features.png                    
+│   ├── matriz-confusao.png                     
+│   └── variancia.png                                         
 ├── src/
 │   ├── data_utils.py                     # Funções de tratamento e análise dos dados
 │   ├── plot_utils.py                     # Funções de visualização reutilizáveis
@@ -110,6 +116,7 @@ Este projeto posiciona-se na interseção de:
 - **Outliers:** `Flight Distance`, `Departure Delay` e `Arrival Delay` analisados via IQR — valores mantidos por serem operacionalmente legítimos
 - **Encoding:** `LabelEncoder` para binárias (`Gender`, `Customer Type`, `Type of Travel`, `satisfaction`); `get_dummies` com `drop_first=True` para `Class` (evitar multicolinearidade)
 - **Seleção de features:** removidas 5 variáveis com baixa correlação com o target ou alta redundância: `Arrival Delay in Minutes` (correlação ~0.97 com `Departure Delay`), `Departure Delay in Minutes`, `Gender`, `Gate location` e `Departure/Arrival time convenient` — restando **18 features** para modelagem
+- **Divisão treino/teste:** separação com `du.separar_treino_teste()` antes da modelagem com hiperparâmetros, garantindo avaliação em dados não vistos pelo modelo
 
 
 ## Modelagem
@@ -117,10 +124,22 @@ Este projeto posiciona-se na interseção de:
 ### Pipeline adotado
 
 ```
-Dados brutos → Encoding → Seleção de features (18) → RobustScaler → PCA → SMOTE → Modelo → Avaliação
+Dados brutos → Encoding → Seleção de features (18) → Divisão treino/teste
+    → RobustScaler → PCA → SMOTE → Modelo → Avaliação
 ```
 
-Todos os modelos foram encapsulados em **pipelines do scikit-learn/imblearn** com `RobustScaler` (robusto a outliers de delay), **PCA** para redução de dimensionalidade e **SMOTE** para balanceamento, avaliados via **StratifiedKFold com 5 folds**.
+Todos os modelos foram encapsulados em **pipelines do scikit-learn/imblearn** com `RobustScaler` (robusto a outliers de delay), **PCA** para redução de dimensionalidade e **SMOTE** para balanceamento.
+
+### Estratégia de avaliação por modelo
+
+| Modelo | Treino | Avaliação |
+|---|---|---|
+| LR sem hiperparâmetros | Dataset inteiro (`X`, `Y`) | `cross_val_predict` — StratifiedKFold 5 folds |
+| LR com hiperparâmetros | `X_train` via `GridSearchCV` | `cross_val_predict` sobre `X_test` |
+| XGBoost sem hiperparâmetros | Dataset inteiro (`X`, `Y`) | `cross_val_predict` — StratifiedKFold 5 folds |
+| **XGBoost com hiperparâmetros** ⭐ | **`X_train` via `GridSearchCV`** | **`cross_val_predict` sobre `X_test`** |
+
+Os modelos **com hiperparâmetros** foram treinados exclusivamente em `X_train` via `GridSearchCV`, e avaliados em `X_test` isolado — garantindo que as métricas reflitam desempenho real em dados não vistos. Os modelos **sem hiperparâmetros** foram avaliados via cross-validation sobre o dataset inteiro como baseline.
 
 ### Redução de dimensionalidade (PCA)
 
@@ -132,36 +151,41 @@ Análise exploratória com PCA sobre as 18 features selecionadas:
 | 13 componentes | ~95% |
 | 18 componentes | 100% |
 
-Os modelos foram treinados com `n_components=18` (sem redução), aproveitando a variância total do conjunto de features selecionadas.
+Os modelos foram treinados com `n_components=18`, aproveitando a variância total do conjunto de features selecionadas.
 
 ### Variância Explicada pelo PCA
 
 ![PCA](imagens/variancia.png)
 
-### Modelos treinados
+### Hiperparâmetros otimizados — XGBoost
 
-| Modelo | Configuração | Otimização |
-|---|---|---|
-| Regressão Logística | Sem hiperparâmetros | StratifiedKFold 5 folds |
-| Regressão Logística | Com hiperparâmetros | `GridSearchCV` — `C`, `max_iter`, `n_components`, `class_weight` |
-| XGBoost | Sem hiperparâmetros | StratifiedKFold 5 folds |
-| **XGBoost** | **Com hiperparâmetros** ⭐ | **`GridSearchCV` — `learning_rate`, `max_depth`, `n_estimators`, `subsample`, `colsample_bytree`** |
-
-As predições finais foram geradas via `cross_val_predict`, garantindo que cada amostra fosse avaliada apenas nos folds em que não participou do treino.
+| Parâmetro | Valor |
+|---|---|
+| `pca__n_components` | 18 |
+| `modelo__learning_rate` | 0.01 |
+| `modelo__max_depth` | 18 |
+| `modelo__n_estimators` | 700 |
+| `modelo__subsample` | 0.5 |
+| `modelo__colsample_bytree` | 0.8 |
 
 
 ## Resultados
 
 ### Comparativo de modelos
 
-> ⭐ **Melhor modelo: XGBoost com hiperparâmetros**
+| Modelo | Avaliação | Accuracy | Precision | Recall | F1-Score |
+|---|---|---|---|---|---|
+| LR sem hiperparâmetros | Cross-Validation (dataset inteiro) | 86.77 | 84.18 | 85.55 | 84.86 |
+| LR com hiperparâmetros | Test Set isolado | 86.87 | 84.40 | 85.75 | 85.07 |
+| XGBoost sem hiperparâmetros | Cross-Validation (dataset inteiro) | 93.95 | 94.12 | 91.76 | **92.93** ⭐ |
+| **XGBoost com hiperparâmetros** | **Test Set isolado** | 93.75 | **94.41** ⭐ | 91.08 | 92.71 |
 
-| Modelo | Accuracy | Precision | Recall | F1-Score |
-|---|---|---|---|---|
-| Regressão Logística (sem hiper) | 86.77 | 84.18 | 85.55 | 84.86 |
-| Regressão Logística (com hiper) | 86.78 | 84.20 | 85.54 | 84.87 |
-| XGBoost (sem hiper) | 93.93 | 94.16 | 91.67 | 92.90 |
-| **XGBoost (com hiper)** | **95.01** | **95.66** | **92.68** | **94.15** |
+**Os dois modelos XGBoost são tecnicamente equivalentes**, com diferença inferior a 0.25pp em todas as métricas. A escolha do "melhor" depende da prioridade do negócio:
+
+- 🥇 **XGBoost sem hiperparâmetros** — melhor em Accuracy (93.95), Recall (91.76) e F1-Score (92.93). Recomendado quando o objetivo é **minimizar falsos negativos** — ou seja, não deixar passageiros insatisfeitos sem identificação.
+- 🥇 **XGBoost com hiperparâmetros** — melhor em Precision (94.41), avaliado em **test set isolado** (metodologia mais rigorosa). Recomendado quando o objetivo é **maximizar a confiança nas predições positivas** — ou seja, acionar intervenções apenas quando há alta certeza de satisfação.
+
+> ℹ️ A diferença entre os dois XGBoosts reflete também metodologias distintas: o modelo sem hiper foi avaliado via cross-validation no dataset inteiro, enquanto o com hiper foi avaliado em test set isolado — o que torna a comparação direta parcialmente assimétrica.
 
 ### Comparação Visual dos Modelos
 
@@ -190,7 +214,7 @@ As predições finais foram geradas via `cross_val_predict`, garantindo que cada
 
 ### Conclusão
 
-O XGBoost com hiperparâmetros foi o modelo com melhor desempenho preditivo (accuracy de 95,01%). A análise revelou que a satisfação do passageiro é determinada por uma combinação de serviços presenciais e digitais. Os cinco fatores mais determinantes identificados pelo modelo (Feature Importance — XGBoost), em ordem de importância, são:
+Os dois modelos XGBoost apresentaram desempenho equivalente, com diferença inferior a 0.25pp em todas as métricas. O XGBoost sem hiperparâmetros lidera em Accuracy e F1-Score; o XGBoost com hiperparâmetros lidera em Precision e foi avaliado em test set isolado, metodologia mais rigorosa. Para uso em produção, recomenda-se o modelo com hiperparâmetros pela separação limpa entre treino e avaliação. A análise revelou que a satisfação do passageiro é determinada por uma combinação de serviços presenciais e digitais. Os cinco fatores mais determinantes identificados pelo modelo (Feature Importance — XGBoost), em ordem de importância, são:
 
 1. 🥇 **Serviço de check-in** — 0,2381
 2. 🥈 **Entretenimento a bordo** — 0,2029
@@ -216,7 +240,7 @@ O check-in — primeiro serviço presencial — define em grande parte a impress
 - Investir em sistemas de entretenimento embarcado nas rotas de média e longa distância
 - Melhorar cobertura e velocidade do Wi-Fi, com planos acessíveis ou inclusão gratuita para passageiros frequentes
 - Para viagens a trabalho, considerar pacotes de conectividade diferenciados (esse grupo usa Wi-Fi como ferramenta produtiva)
-- Priorização estratégica: passageiros insatisfeitos concentram-se na faixa dos 36 anos — geração digitalmente ativa com alta dependência de conectividade
+- Passageiros insatisfeitos concentram-se na faixa dos 36 anos — geração digitalmente ativa com alta dependência de conectividade
 
 ### Limitações
 
