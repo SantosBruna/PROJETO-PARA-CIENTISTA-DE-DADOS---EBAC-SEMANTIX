@@ -22,6 +22,8 @@
 
 **Predição de Satisfação de Passageiros Aéreos: Análise de Fatores Comportamentais e Demográficos que Influenciam a Experiência do Cliente em Serviços de Aviação**
 
+**Desenvolvido por:** Bruna S. R. Santos | **Iniciado em:** Novembro de 2025
+
 
 ## Contexto / Problema do Negócio
 
@@ -36,12 +38,19 @@ Em um mercado cada vez mais competitivo, companhias aéreas que não conhecem os
 
 **A dor:** companhias aéreas coletam dados ricos de serviço e perfil de passageiro, mas raramente transformam esses dados em inteligência preditiva. O resultado são investimentos mal priorizados — melhorando serviços que pouco afetam a satisfação enquanto ignoram os que mais impactam.
 
+Este projeto posiciona-se na interseção de:
+- **Ciência de Dados Aplicada:** uso de ML para problema real de negócio
+- **Customer Experience:** fundamentos de satisfação e comportamento do cliente
+- **Analytics Prescritivo:** não apenas prever, mas recomendar ações
+
 
 ## Objetivo
 
 1. **Prever o nível de satisfação** (Satisfeito vs. Neutro/Insatisfeito) com base em características demográficas, perfil de viagem e avaliações de serviço.
 2. **Identificar os fatores mais críticos** que determinam a experiência do passageiro.
 3. **Gerar recomendações prescritivas** — traduzir os achados em ações concretas para melhoria de serviço.
+4. **Criar sistema de alerta** para intervenção proativa em passageiros com risco de insatisfação.
+5. **Quantificar o impacto de atrasos** na satisfação em relação a outros fatores.
 
 **Perguntas respondidas pelo projeto:**
 - Quais serviços a bordo têm maior impacto na satisfação?
@@ -60,7 +69,7 @@ Em um mercado cada vez mais competitivo, companhias aéreas que não conhecem os
 │   ├── data_utils.py                     # Funções de tratamento e análise dos dados
 │   ├── plot_utils.py                     # Funções de visualização reutilizáveis
 │   └── model_utils.py                    # Pipelines, cross-validation e avaliação dos modelos
-├── EBAC_Projeto_Semantix.ipynb       # Notebook principal com toda a análise 
+├── EBAC_Projeto_Semantix.ipynb           # Notebook principal com toda a análise
 └── README.md
 ```
 
@@ -86,13 +95,21 @@ Em um mercado cada vez mais competitivo, companhias aéreas que não conhecem os
 **Avaliações de serviço (escala 1–5):**
 `Inflight wifi service`, `Food and drink`, `Online boarding`, `Seat comfort`, `Inflight entertainment`, `On-board service`, `Leg room service`, `Baggage handling`, `Checkin service`, `Inflight service`, `Cleanliness`, `Ease of Online booking`
 
+### Análise exploratória — principais observações
+
+- Dataset equilibrado entre gêneros
+- Predominância de clientes fiéis (*Loyal*) sobre não-fiéis (*Disloyal*)
+- Maior concentração de viagens a trabalho (*Business Travel*)
+- Classe Eco Plus com poucos registros em relação às demais
+- Target levemente desbalanceado para neutro/insatisfeito
+
 ### Tratamento aplicado
 
 - **Valores nulos:** `Arrival Delay in Minutes` preenchido com `0` (ausência de registro = sem atraso de chegada)
 - **Tipagem:** variáveis categóricas convertidas para `str`; delays convertidos para `int64`
-- **Encoding:** `LabelEncoder` para binárias (`Gender`, `Customer Type`, `Type of Travel`, `satisfaction`); `get_dummies` com `drop_first=True` para `Class` (evitar multicolinearidade)
 - **Outliers:** `Flight Distance`, `Departure Delay` e `Arrival Delay` analisados via IQR — valores mantidos por serem operacionalmente legítimos
-- **Seleção de features:** removidas 5 variáveis com baixa correlação com o target ou alta redundância entre si: `Arrival Delay in Minutes` (correlação de ~0.97 com `Departure Delay`), `Departure Delay in Minutes`, `Gender`, `Gate location` e `Departure/Arrival time convenient` — restando **18 features** para modelagem
+- **Encoding:** `LabelEncoder` para binárias (`Gender`, `Customer Type`, `Type of Travel`, `satisfaction`); `get_dummies` com `drop_first=True` para `Class` (evitar multicolinearidade)
+- **Seleção de features:** removidas 5 variáveis com baixa correlação com o target ou alta redundância: `Arrival Delay in Minutes` (correlação ~0.97 com `Departure Delay`), `Departure Delay in Minutes`, `Gender`, `Gate location` e `Departure/Arrival time convenient` — restando **18 features** para modelagem
 
 
 ## Modelagem
@@ -115,11 +132,11 @@ Análise exploratória com PCA sobre as 18 features selecionadas:
 | 13 componentes | ~95% |
 | 18 componentes | 100% |
 
+Os modelos foram treinados com `n_components=18` (sem redução), aproveitando a variância total do conjunto de features selecionadas.
+
 ### Variância Explicada pelo PCA
 
 ![PCA](imagens/variancia.png)
-
-Os modelos foram treinados com `n_components=18` (sem redução), aproveitando a variância total do conjunto de features selecionadas.
 
 ### Modelos treinados
 
@@ -142,8 +159,8 @@ As predições finais foram geradas via `cross_val_predict`, garantindo que cada
 | Modelo | Accuracy | Precision | Recall | F1-Score |
 |---|---|---|---|---|
 | Regressão Logística (sem hiper) | 86.77 | 84.18 | 85.55 | 84.86 |
-| Regressão Logística (com hiper) | 86.78 | 84.2 | 85.54 | 84.87 |
-| XGBoost (sem hiper) | 93.93 | 94.16 | 91.67 | 92.9 |
+| Regressão Logística (com hiper) | 86.78 | 84.20 | 85.54 | 84.87 |
+| XGBoost (sem hiper) | 93.93 | 94.16 | 91.67 | 92.90 |
 | **XGBoost (com hiper)** | **95.01** | **95.66** | **92.68** | **94.15** |
 
 ### Comparação Visual dos Modelos
@@ -154,49 +171,52 @@ As predições finais foram geradas via `cross_val_predict`, garantindo que cada
 
 ![Matriz de Confusão](imagens/matriz-confusao.png)
 
+### Importância das Variáveis no XGBoost
+
+![Feature Importance](imagens/features.png)
+
 ### Principais descobertas
 
 > 💡 **Insight 1 — Serviços digitais lideram o impacto:** Embarque online e reserva online estão entre os fatores com maior peso na satisfação — a jornada digital do passageiro tem mais influência do que muitos serviços físicos tradicionais.
 
 > 💡 **Insight 2 — Tipo de viagem é determinante:** Passageiros em viagens a trabalho apresentam maior taxa de satisfação, mas ainda abaixo do ideal — indicando que o serviço atual atende melhor o viajante corporativo, mas ainda deixa lacunas em ambos os perfis.
 
-> 💡 **Insight 3 — Atrasos importam, mas não são o único fator:** Atrasos na partida e chegada aumentam a insatisfação, mas passageiros insatisfeitos em voos pontuais indicam que a **qualidade dos serviços a bordo** pesa mais do que a pontualidade isoladamente.
+> 💡 **Insight 3 — Atrasos importam, mas não são o único fator:** Nenhum dos atrasos operacionais aparece entre os cinco primeiros determinantes da satisfação. Passageiros insatisfeitos em voos pontuais indicam que a **qualidade dos serviços** pesa mais do que a pontualidade isoladamente.
 
-> 💡 **Insight 4 — Perfil etário:** Passageiros satisfeitos têm idade média em torno de **43 anos**; os insatisfeitos concentram-se em torno de **36 anos** — viajantes mais jovens apresentam expectativas distintas, especialmente em relação a conectividade e tecnologia.
+> 💡 **Insight 4 — Perfil etário:** Passageiros satisfeitos têm idade média em torno de **43 anos**; os insatisfeitos concentram-se em torno de **36 anos** — viajantes mais jovens apresentam expectativas distintas, especialmente em relação à conectividade e tecnologia.
+
 
 ## Conclusões e Próximos Passos
 
 ### Conclusão
 
-O XGBoost com hiperparâmetros foi o modelo com melhor desempenho preditivo. A análise revelou que a satisfação do passageiro é determinada por uma combinação de serviços presenciais e digitais — e o dado mais relevante é que o serviço de check-in lidera como o fator de maior impacto, com importância de 0,24, superando todos os serviços online.
-Os cinco fatores mais determinantes identificados pelo modelo (Feature Importance — XGBoost), em ordem de importância, são:
+O XGBoost com hiperparâmetros foi o modelo com melhor desempenho preditivo (accuracy de 95,01%). A análise revelou que a satisfação do passageiro é determinada por uma combinação de serviços presenciais e digitais. Os cinco fatores mais determinantes identificados pelo modelo (Feature Importance — XGBoost), em ordem de importância, são:
 
-1. 🥇 **Serviço de check-in**        - 0,2381
-2. 🥈 **Entretenimento a bordo**     - 0,2029
-3. 🥉 **Embarque online**            - 0,2009
-4. **Wi-Fi a bordo**                  - 0,1925
-5. **Reserva online**                - 0,1835
+1. 🥇 **Serviço de check-in** — 0,2381
+2. 🥈 **Entretenimento a bordo** — 0,2029
+3. 🥉 **Embarque online** — 0,2009
+4. **Wi-Fi a bordo** — 0,1925
+5. **Reserva online** — 0,1835
 
-### Importância das Variáveis no XGBoost
-![Feature Importance](imagens/features.png)
+O check-in — primeiro serviço presencial — define em grande parte a impressão geral da viagem. Os três serviços digitais (embarque online, Wi-Fi e reserva online) somam importância comparável à do check-in sozinho, reforçando que a jornada digital do passageiro é tão crítica quanto o atendimento presencial.
 
-O que esses números revelam é que a experiência do passageiro começa muito antes do voo e continua durante ele: o check-in — primeiro serviço presencial — define em grande parte a impressão geral da viagem. Em seguida, o entretenimento a bordo e o embarque online mostram que tanto o conforto durante o voo quanto a facilidade dos processos digitais pré-embarque têm peso equivalente na satisfação.
-Outro ponto relevante é que os três serviços digitais (embarque online, Wi-Fi e reserva online) somam importância comparável à do check-in sozinho, reforçando que a jornada digital do passageiro — do momento da compra até o embarque — é tão crítica quanto o atendimento presencial.
-Isso contraria a percepção comum de que pontualidade é o fator dominante: nenhum dos atrasos operacionais aparece entre os cinco primeiros determinantes da satisfação. Companhias que investem em atendimento de qualidade no check-in, entretenimento a bordo e processos digitais fluidos conseguem manter passageiros satisfeitos mesmo diante de atrasos moderados.
-
-### Recomendações para a Semantix
+### Recomendações
 
 **1. Serviços digitais (prioridade alta)**
 - Conduzir análise de usabilidade (UX Research) do site e app para identificar gargalos na reserva e no embarque online
 - Simplificar os fluxos com maior taxa de abandono e validar melhorias com testes A/B
 
 **2. Check-in presencial (prioridade alta)**
+- A satisfação com check-in só aparece de forma significativa quando avaliado com 5 estrelas — baixa tolerância a falhas
 - Disponibilizar colaborador dedicado para orientar passageiros no check-in
 - Ampliar totens de autoatendimento para reduzir filas e agilizar o processo
+- Monitorar continuamente as avaliações para medir o impacto das melhorias
 
 **3. Entretenimento e Wi-Fi (prioridade média)**
 - Investir em sistemas de entretenimento embarcado nas rotas de média e longa distância
-- Melhorar cobertura e velocidade do Wi-Fi, com planos acessíveis ou inclusão gratuita para passageiros frequentes — estratégia especialmente relevante para reter o público entre 30–40 anos
+- Melhorar cobertura e velocidade do Wi-Fi, com planos acessíveis ou inclusão gratuita para passageiros frequentes
+- Para viagens a trabalho, considerar pacotes de conectividade diferenciados (esse grupo usa Wi-Fi como ferramenta produtiva)
+- Priorização estratégica: passageiros insatisfeitos concentram-se na faixa dos 36 anos — geração digitalmente ativa com alta dependência de conectividade
 
 ### Limitações
 
